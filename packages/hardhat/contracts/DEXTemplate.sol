@@ -3,7 +3,6 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title DEX Template
@@ -14,9 +13,9 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
  */
 contract DEX {
     /* ========== GLOBAL VARIABLES ========== */
-
-    using SafeMath for uint256; //outlines use of SafeMath for uint256 variables
     IERC20 token; //instantiates the imported contract
+    uint256 totalLiquidity; //total liquidity in DEX
+    mapping(address => uint256) liquidty;
 
     /* ========== EVENTS ========== */
 
@@ -39,10 +38,6 @@ contract DEX {
      * @notice Emitted when liquidity removed from DEX and decreases LPT count within DEX.
      */
     event LiquidityRemoved();
-
-    /* ========== VARIABLES ========== */
-    uint256 totalLiquidity; //total liquidity in DEX
-    mapping(address => uint256) liquidty;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -98,6 +93,7 @@ contract DEX {
         tokenOutput = price(msg.value, ethReserves, tokenReserves); //returns the amount of tokens that will be sent to the user
         bool success = token.transfer(msg.sender, tokenOutput); //transfers the tokens to the contract
         require(success, "EthToToken: Transfer failed"); //ensures that the transferFrom() function was successful
+        emit EthToTokenSwap(); //emits the EthToTokenSwap event
     }
 
     /**
@@ -117,6 +113,7 @@ contract DEX {
 
         (bool done, ) = payable(msg.sender).call{value: ethOutput}(""); //transfers the tokens to the contract
         require(done, "TokenToEth: ETH Transfer failed"); //ensures that the transferFrom() function was successful //emits an event when liquidity is provided to the contract
+        emit TokenToEthSwap(); //emits the TokenToEthSwap event
     }
 
     /**
@@ -139,6 +136,7 @@ contract DEX {
             tokensDeposited
         ); //transfers the tokens to the contract
         require(success, "Deposit: TransferFrom failed"); //ensures that the transferFrom() function was successful
+        emit LiquidityProvided(); //emits the LiquidityProvided event
     }
 
     /**
@@ -160,5 +158,6 @@ contract DEX {
 
         bool success = token.transfer(msg.sender, tokenAmount); //transfers the tokens to the contract
         require(success, "Withdraw: token transfer failed");
+        emit LiquidityRemoved(); //emits the LiquidityWithdrawn event
     }
 }
