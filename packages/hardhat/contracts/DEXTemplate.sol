@@ -42,7 +42,7 @@ contract DEX {
 
     /* ========== VARIABLES ========== */
     uint256 totalLiquidity; //total liquidity in DEX
-    uint256 liquidty; //liquidity in DEX
+    mapping(address => uint256) liquidty;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -59,7 +59,9 @@ contract DEX {
      * NOTE: since ratio is 1:1, this is fine to initialize the totalLiquidity (wrt to balloons) as equal to eth balance of contract.
      */
     function init(uint256 tokens) public payable returns (uint256) {
-        totalLiquidity = tokens; //initializes totalLiquidity to the amount of tokens that will be transferred to the DEX itself from the erc20 contract mintee (and only them based on how Balloons.sol is written).
+        require(totalLiquidity == 0, "Init: Contract has liquidity"); //ensures that totalLiquidity is equal to 0
+        totalLiquidity = tokens; //initializes totalLiquidity
+        liquidty[msg.sender] = tokens; //initializes liquidty for msg.sender
         bool success = token.transferFrom(msg.sender, address(this), tokens);
 
         require(success, "Init: TransferFrom failed"); //ensures that the transferFrom() function was successful
@@ -74,7 +76,11 @@ contract DEX {
         uint256 xInput,
         uint256 xReserves,
         uint256 yReserves
-    ) public view returns (uint256 yOutput) {}
+    ) public pure returns (uint256 yOutput) {
+        yOutput =
+            (yReserves * ((xInput * 997) / 1000)) /
+            (xReserves + ((xInput * 997) / 1000)); //returns yOutput, or yDelta for xInput (or xDelta)
+    }
 
     /**
      * @notice returns liquidity for a user. Note this is not needed typically due to the `liquidity()` mapping variable being public and having a getter as a result. This is left though as it is used within the front end code (App.jsx).
