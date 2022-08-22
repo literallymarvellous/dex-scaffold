@@ -50,7 +50,8 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   await balloons.approve(dex.address, ethers.utils.parseEther("100"));
   console.log("INIT exchange...");
   await dex.init(ethers.utils.parseEther("5"), {
-    value: ethers.utils.parseEther("0.1"),
+    value: ethers.utils.parseEther("0.1"), // used for deployment, dont have up to 5 eth on testnet
+    // value: ethers.utils.parseEther("5"), // used for testing,
     gasLimit: 200000,
   });
 };
