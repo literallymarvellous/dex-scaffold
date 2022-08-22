@@ -22,22 +22,22 @@ contract DEX {
     /**
      * @notice Emitted when ethToToken() swap transacted
      */
-    event EthToTokenSwap();
+    event EthToTokenSwap(address, uint256, uint256);
 
     /**
      * @notice Emitted when tokenToEth() swap transacted
      */
-    event TokenToEthSwap();
+    event TokenToEthSwap(address, uint256, uint256);
 
     /**
      * @notice Emitted when liquidity provided to DEX and mints LPTs.
      */
-    event LiquidityProvided();
+    event LiquidityProvided(address, uint256, uint256, uint256);
 
     /**
      * @notice Emitted when liquidity removed from DEX and decreases LPT count within DEX.
      */
-    event LiquidityRemoved();
+    event LiquidityRemoved(address, uint256, uint256, uint256);
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -91,9 +91,9 @@ contract DEX {
         uint256 ethReserves = address(this).balance - msg.value; //gets the amount of ether reserves in the contract
         uint256 tokenReserves = token.balanceOf(address(this)); //gets the amount of token reserves in the contract
         tokenOutput = price(msg.value, ethReserves, tokenReserves); //returns the amount of tokens that will be sent to the user
-        bool success = token.transfer(msg.sender, tokenOutput); //transfers the tokens to the contract
-        require(success, "EthToToken: Transfer failed"); //ensures that the transferFrom() function was successful
-        emit EthToTokenSwap(); //emits the EthToTokenSwap event
+        bool success = token.transfer(msg.sender, tokenOutput);
+        require(success, "EthToToken: Transfer failed");
+        emit EthToTokenSwap(msg.sender, msg.value, tokenOutput);
     }
 
     /**
@@ -111,9 +111,9 @@ contract DEX {
         ); //transfers the tokens to the contract
         require(success, "TokenToEth: TransferFrom failed");
 
-        (bool done, ) = payable(msg.sender).call{value: ethOutput}(""); //transfers the tokens to the contract
-        require(done, "TokenToEth: ETH Transfer failed"); //ensures that the transferFrom() function was successful //emits an event when liquidity is provided to the contract
-        emit TokenToEthSwap(); //emits the TokenToEthSwap event
+        (bool done, ) = payable(msg.sender).call{value: ethOutput}("");
+        require(done, "TokenToEth: ETH Transfer failed");
+        emit TokenToEthSwap(msg.sender, ethOutput, tokenInput);
     }
 
     /**
@@ -127,16 +127,21 @@ contract DEX {
         uint256 ethInput = msg.value; //gets the amount of ether sent to the contract
         uint256 tokenReserves = token.balanceOf(address(this)); //gets the amount of token reserves in the contract
         tokensDeposited = (tokenReserves * ethInput) / ethReserves; //returns the amount of tokens that will be sent to the user
-        uint256 liquidtyMinted = (totalLiquidity * ethInput) / ethReserves; //returns the amount of tokens that will be sent to the user
-        liquidty[msg.sender] += liquidtyMinted; //adds the amount of liquidity minted to the user's liquidity
-        totalLiquidity += liquidtyMinted; //adds the amount of liquidity minted to the totalLiquidity
+        uint256 liquidityMinted = (totalLiquidity * ethInput) / ethReserves; //returns the amount of tokens that will be sent to the user
+        liquidty[msg.sender] += liquidityMinted; //adds the amount of liquidity minted to the user's liquidity
+        totalLiquidity += liquidityMinted; //adds the amount of liquidity minted to the totalLiquidity
         bool success = token.transferFrom(
             msg.sender,
             address(this),
             tokensDeposited
         ); //transfers the tokens to the contract
-        require(success, "Deposit: TransferFrom failed"); //ensures that the transferFrom() function was successful
-        emit LiquidityProvided(); //emits the LiquidityProvided event
+        require(success, "Deposit: TransferFrom failed");
+        emit LiquidityProvided(
+            msg.sender,
+            liquidityMinted,
+            msg.value,
+            tokensDeposited
+        );
     }
 
     /**
@@ -153,11 +158,12 @@ contract DEX {
         tokenAmount = (tokenReserves * amount) / totalLiquidity; //returns the amount of tokens that will be sent to the user
         liquidty[msg.sender] -= ethAmount; //subtracts the amount of liquidity withdrawn from the user's liquidity
         totalLiquidity -= ethAmount; //subtracts the amount of liquidity withdrawn from the totalLiquidity
-        (bool done, ) = payable(msg.sender).call{value: ethAmount}(""); //transfers the tokens to the contract
-        require(done, "Withdraw: ETH Transfer failed"); //ensures that the transferFrom() function was successful //emits an event when liquidity is withdrawn from the contract
 
-        bool success = token.transfer(msg.sender, tokenAmount); //transfers the tokens to the contract
+        (bool done, ) = payable(msg.sender).call{value: ethAmount}("");
+        require(done, "Withdraw: ETH Transfer failed");
+
+        bool success = token.transfer(msg.sender, tokenAmount);
         require(success, "Withdraw: token transfer failed");
-        emit LiquidityRemoved(); //emits the LiquidityWithdrawn event
+        emit LiquidityRemoved(msg.sender, amount, ethAmount, tokenAmount);
     }
 }
